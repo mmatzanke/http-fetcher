@@ -1,9 +1,13 @@
 import { fake } from 'sinon';
-
-import type { ErrorReporter } from './index.js';
 import type { SinonSpiedInstance } from 'sinon';
 
-export const createErrorReporterMock = (overrides?: Partial<ErrorReporter>): SinonSpiedInstance<ErrorReporter> => ({
-    ...overrides,
-    reportError: fake(),
-});
+import type { ErrorReporter } from '.';
+
+export const createErrorReporterMock = (
+    overrides?: Partial<ErrorReporter>,
+): SinonSpiedInstance<ErrorReporter> => {
+    return {
+        ...overrides,
+        reportError: fake(),
+    };
+};
