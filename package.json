@@ -1,0 +1,44 @@
+{
+  "name": "http-fetcher",
+  "version": "1.0.0",
+  "description": "A http fetcher based on ky",
+  "keywords": [
+    "http",
+    "fetch"
+  ],
+  "license": "ISC",
+  "author": "Martin Matzanke",
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "build:test": "tsc -p tsconfig.tests.build.json",
+    "prepublishOnly": "npm run build",
+    "test": "npm run build:test --silent && mocha --ui tdd \"dist-tests/**/*.test.js\""
+  },
+  "dependencies": {
+    "ky": "1.10.0",
+    "true-myth": "9.1.0",
+    "zod": "4.1.11"
+  },
+  "devDependencies": {
+    "@types/mocha": "10.0.10",
+    "@types/node": "24.5.2",
+    "@types/sinon": "17.0.4",
+    "fishery": "2.3.1",
+    "mocha": "11.7.2",
+    "rimraf": "6.0.1",
+    "sinon": "21.0.0",
+    "typescript": "5.9.2"
+  }
+}
