@@ -1,19 +1,17 @@
-import assert from 'node:assert/strict';
-
 import { Factory } from 'fishery';
 import { HTTPError } from 'ky';
-import { fake } from 'sinon';
-import { Result } from 'true-myth';
-import { suite, test } from 'mocha';
-
 import type { NormalizedOptions } from 'ky';
 import type ky from 'ky';
-import { HTTPErrorWithResponseBody } from './http-error-with-response-body';
-import { createHttpFetcher } from './http-fetcher';
-import { createErrorReporterMock } from './http-fetcher.factories';
-
-import type { Pathname, RequestHeaders } from './http-fetcher';
+import { suite, test } from 'mocha';
+import assert from 'node:assert/strict';
+import { fake } from 'sinon';
 import type { SinonSpy } from 'sinon';
+import Result from 'true-myth/result';
+
+import { HTTPErrorWithResponseBody } from './http-error-with-response-body.js';
+import { createErrorReporterMock } from './http-fetcher.factories.js';
+import { createHttpFetcher } from './http-fetcher.js';
+import type { Pathname, RequestHeaders } from './http-fetcher.js';
 
 type Ky = typeof ky;
 
@@ -25,55 +23,41 @@ type KyMockResponse = {
     readonly text: SinonSpy;
 };
 
-type CreateMockReturnType = Readonly<Ky & SinonSpy<Parameters<Ky>, KyMockResponse>>;
+type CreateMockReturnType = Ky & SinonSpy<Parameters<Ky>, KyMockResponse>;
 
-const responseJsonFactory = Factory.define<{ readonly test: boolean }>(() => {
-return { test: true }
-});
-const responseTextFactory = Factory.define<string>(() => {
-return 'someResponseText'
-});
+const responseJsonFactory = Factory.define<{ readonly test: boolean }>(() => ({ test: true }));
+const responseTextFactory = Factory.define<string>(() => 'someResponseText');
 const fakeJson = fake.resolves(responseJsonFactory.build());
-const internalKyHttpErrorFactory = Factory.define<HTTPError>(() => {
-    {
-return new HTTPError(
-        {
-            json: fakeJson
+const internalKyHttpErrorFactory = Factory.define<HTTPError>(
+    () =>
+        new HTTPError(
+            {
+                json: fakeJson,
             } as unknown as Response,
-        {} as Request,
-        {} as NormalizedOptions
-        )},
-});
-const contentTypeFactory = Factory.define<`application/json${string}`>(
-    () => {return 'application/json utf8'},
+            {} as Request,
+            {} as NormalizedOptions,
+        ),
 );
-const headerFactory = Factory.define<RequestHeaders>(() => {
-return {
-        'Content-Type': contentTypeFactory.build()
-}});
+const contentTypeFactory = Factory.define<`application/json${string}`>(() => 'application/json utf8');
+const headerFactory = Factory.define<RequestHeaders>(() => ({
+    'Content-Type': contentTypeFactory.build(),
+}));
 const initialHeaderFactory = headerFactory.params({
     theHeader: 'the-header',
 });
 const testUrlFactory = Factory.define<URL, { readonly pathname: Pathname }>(
-    ({ transientParams }) => {
-return new URL(transientParams.pathname ?? '', 'http://example.com')
-},
+    ({ transientParams }) => new URL(transientParams.pathname ?? '', 'http://example.com'),
 );
-const internalKyErrorResultExpectationFactory = Factory.define<
-    Result<never, HTTPErrorWithResponseBody>
->(() => {
-{
-return Result.err(new HTTPErrorWithResponseBody(internalKyHttpErrorFactory.build(), responseJsonFactory.build()))
-},
-    );
-});
+const internalKyErrorResultExpectationFactory = Factory.define<Result<never, HTTPErrorWithResponseBody>>(() =>
+    Result.err(new HTTPErrorWithResponseBody(internalKyHttpErrorFactory.build(), responseJsonFactory.build())),
+);
 
 const createKyMock = (options?: {
     readonly contentType?: `application/json${string}`;
     readonly error?: HTTPError;
     readonly jsonResponse?: unknown;
     readonly textResponse?: unknown;
-}): Readonly<CreateMockReturnType> => {
+}): CreateMockReturnType => {
     const { contentType, error, jsonResponse, textResponse } = options ?? {};
     const kyMockResponse: KyMockResponse = {
         headers: {
@@ -87,13 +71,11 @@ const createKyMock = (options?: {
         return fake.rejects<Parameters<Ky>, CreateMockReturnType>(error) as never;
     }
 
-    return fake.resolves<Parameters<Ky>, CreateMockReturnType>(
-        kyMockResponse
-    ) as unknown as CreateMockReturnType;
+    return fake.resolves<Parameters<Ky>, CreateMockReturnType>(kyMockResponse) as unknown as CreateMockReturnType;
 };
 
-suite('Http fetcher', function () {
-    test('get uses the correct parameters', async function () {
+suite('Http fetcher', () => {
+    test('get uses the correct parameters', async () => {
         const kyMock = createKyMock();
         const errorReporter = createErrorReporterMock();
         const httpFetcher = createHttpFetcher({ errorReporter, ky: kyMock });
@@ -107,11 +89,11 @@ suite('Http fetcher', function () {
                 headers: {},
                 json: undefined,
                 method: 'GET',
-            }
+            },
         ]);
     });
 
-    test('get uses the set headers', async function () {
+    test('get uses the set headers', async () => {
         const kyMock = createKyMock();
         const errorReporter = createErrorReporterMock();
         const httpFetcher = createHttpFetcher(
@@ -125,7 +107,7 @@ suite('Http fetcher', function () {
             requestOptions: {
                 headers: headerFactory.build({
                     foo: 'bar',
-                })
+                }),
             },
             url: testUrlFactory.build(),
         });
@@ -139,17 +121,14 @@ suite('Http fetcher', function () {
                 }),
                 json: undefined,
                 method: 'GET',
-            }
+            },
         ]);
     });
 
-    test('get uses the correct parameters when baseUrl is set through options', async function () {
+    test('get uses the correct parameters when baseUrl is set through options', async () => {
         const kyMock = createKyMock();
         const errorReporter = createErrorReporterMock();
-        const httpFetcher = createHttpFetcher(
-            { errorReporter, ky: kyMock },
-            { baseUrl: testUrlFactory.build() }
-        );
+        const httpFetcher = createHttpFetcher({ errorReporter, ky: kyMock }, { baseUrl: testUrlFactory.build() });
         await httpFetcher.get({
             pathname: '/somePath',
         });
@@ -160,11 +139,11 @@ suite('Http fetcher', function () {
                 headers: {},
                 json: undefined,
                 method: 'GET',
-            }
+            },
         ]);
     });
 
-    test('get uses the correct parameters when baseUrl and pathname is set through options', async function () {
+    test('get uses the correct parameters when baseUrl and pathname is set through options', async () => {
         const kyMock = createKyMock();
         const errorReporter = createErrorReporterMock();
         const httpFetcher = createHttpFetcher(
@@ -172,26 +151,26 @@ suite('Http fetcher', function () {
             {
                 baseUrl: testUrlFactory.build({
                     pathname: '/the-base-path',
-                })
-            }
+                }),
+            },
         );
         await httpFetcher.get({
-            pathname: '/some-other-path'
+            pathname: '/some-other-path',
         });
 
         assert.deepEqual(kyMock.firstCall.args, [
             testUrlFactory.build({
-                pathname: '/the-base-path/some-other-path'
+                pathname: '/the-base-path/some-other-path',
             }),
             {
                 headers: {},
                 json: undefined,
                 method: 'GET',
-            }
+            },
         ]);
     });
 
-    test('get resolves with response with Result ok when content type is "application/json"', async function () {
+    test('get resolves with response with Result ok when content type is "application/json"', async () => {
         const kyMock = createKyMock({ contentType: 'application/json utf8' });
         const errorReporter = createErrorReporterMock();
         const httpFetcher = createHttpFetcher({ errorReporter, ky: kyMock });
@@ -203,7 +182,7 @@ suite('Http fetcher', function () {
         assert.deepEqual(result, Result.ok(responseJsonFactory.build()));
     });
 
-    test('get resolves with response as Result ok with text when content type is unknown', async function () {
+    test('get resolves with response as Result ok with text when content type is unknown', async () => {
         const kyMock = createKyMock({ jsonResponse: responseJsonFactory.build() });
         const errorReporter = createErrorReporterMock();
         const httpFetcher = createHttpFetcher({ errorReporter, ky: kyMock });
@@ -215,7 +194,7 @@ suite('Http fetcher', function () {
         assert.deepEqual(result, Result.ok(responseTextFactory.build()));
     });
 
-    test('get resolves with response as Result error when internal ky error', async function () {
+    test('get resolves with response as Result error when internal ky error', async () => {
         const kyMock = createKyMock({
             contentType: contentTypeFactory.build(),
             error: internalKyHttpErrorFactory.build(),
@@ -236,7 +215,7 @@ suite('Http fetcher', function () {
         ]);
     });
 
-    test('get executes with http error handlers when internal ky http error', async function () {
+    test('get executes with http error handlers when internal ky http error', async () => {
         const kyMock = createKyMock({
             contentType: contentTypeFactory.build(),
             error: internalKyHttpErrorFactory.build(),
@@ -263,7 +242,7 @@ suite('Http fetcher', function () {
         assert.deepEqual(handler3.lastCall.args, [internalKyHttpErrorFactory.build()]);
     });
 
-    test('post uses the correct parameters', async function () {
+    test('post uses the correct parameters', async () => {
         const kyMock = createKyMock();
         const errorReporter = createErrorReporterMock();
         const httpFetcher = createHttpFetcher({ errorReporter, ky: kyMock });
@@ -278,11 +257,11 @@ suite('Http fetcher', function () {
                 headers: {},
                 json: undefined,
                 method: 'POST',
-            }
+            },
         ]);
     });
 
-    test('post uses the set headers', async function () {
+    test('post uses the set headers', async () => {
         const kyMock = createKyMock();
         const errorReporter = createErrorReporterMock();
         const httpFetcher = createHttpFetcher(
@@ -296,7 +275,7 @@ suite('Http fetcher', function () {
             requestOptions: {
                 headers: headerFactory.build({
                     foo: 'bar',
-                })
+                }),
             },
             url: testUrlFactory.build(),
         });
@@ -310,11 +289,11 @@ suite('Http fetcher', function () {
                 }),
                 json: undefined,
                 method: 'POST',
-            }
+            },
         ]);
     });
 
-    test('post resolves with response with Result ok when content type is "application/json"', async function () {
+    test('post resolves with response with Result ok when content type is "application/json"', async () => {
         const kyMock = createKyMock({ contentType: contentTypeFactory.build() });
         const errorReporter = createErrorReporterMock();
         const httpFetcher = createHttpFetcher({ errorReporter, ky: kyMock });
@@ -326,7 +305,7 @@ suite('Http fetcher', function () {
         assert.deepEqual(result, Result.ok(responseJsonFactory.build()));
     });
 
-    test('post resolves with response as Result ok with text when content type is unknown', async function () {
+    test('post resolves with response as Result ok with text when content type is unknown', async () => {
         const kyMock = createKyMock({ jsonResponse: responseJsonFactory.build() });
         const errorReporter = createErrorReporterMock();
         const httpFetcher = createHttpFetcher({ errorReporter, ky: kyMock });
@@ -338,7 +317,7 @@ suite('Http fetcher', function () {
         assert.deepEqual(result, Result.ok(responseTextFactory.build()));
     });
 
-    test('post resolves with response as Result error when internal ky error', async function () {
+    test('post resolves with response as Result error when internal ky error', async () => {
         const kyMock = createKyMock({
             contentType: contentTypeFactory.build(),
             error: internalKyHttpErrorFactory.build(),
@@ -358,7 +337,7 @@ suite('Http fetcher', function () {
         ]);
     });
 
-    test('post executes with http error handlers when internal ky http error', async function () {
+    test('post executes with http error handlers when internal ky http error', async () => {
         const kyMock = createKyMock({
             contentType: contentTypeFactory.build(),
             error: internalKyHttpErrorFactory.build(),
@@ -385,7 +364,7 @@ suite('Http fetcher', function () {
         assert.deepEqual(handler3.lastCall.args, [internalKyHttpErrorFactory.build()]);
     });
 
-    test('postJson uses the correct parameters', async function () {
+    test('postJson uses the correct parameters', async () => {
         const kyMock = createKyMock({ jsonResponse: responseJsonFactory.build() });
         const errorReporter = createErrorReporterMock();
         const httpFetcher = createHttpFetcher({ errorReporter, ky: kyMock });
@@ -401,11 +380,11 @@ suite('Http fetcher', function () {
                 headers: {},
                 json: responseJsonFactory.build(),
                 method: 'POST',
-            }
+            },
         ]);
     });
 
-    test('postJson uses the set headers', async function () {
+    test('postJson uses the set headers', async () => {
         const kyMock = createKyMock({ jsonResponse: responseJsonFactory.build() });
         const errorReporter = createErrorReporterMock();
         const httpFetcher = createHttpFetcher(
@@ -420,7 +399,7 @@ suite('Http fetcher', function () {
             requestOptions: {
                 headers: headerFactory.build({
                     foo: 'bar',
-                })
+                }),
             },
             url: testUrlFactory.build(),
         });
@@ -434,17 +413,14 @@ suite('Http fetcher', function () {
                 }),
                 json: responseJsonFactory.build(),
                 method: 'POST',
-            }
+            },
         ]);
     });
 
-    test('postJson uses the correct parameters when baseUrl is set through options', async function () {
+    test('postJson uses the correct parameters when baseUrl is set through options', async () => {
         const kyMock = createKyMock({ jsonResponse: responseJsonFactory.build() });
         const errorReporter = createErrorReporterMock();
-        const httpFetcher = createHttpFetcher(
-            { errorReporter, ky: kyMock },
-            { baseUrl: testUrlFactory.build() }
-        );
+        const httpFetcher = createHttpFetcher({ errorReporter, ky: kyMock }, { baseUrl: testUrlFactory.build() });
         await httpFetcher.postJson({
             pathname: '/somePath',
             payload: responseJsonFactory.build(),
@@ -456,11 +432,11 @@ suite('Http fetcher', function () {
                 headers: {},
                 json: responseJsonFactory.build(),
                 method: 'POST',
-            }
+            },
         ]);
     });
 
-    test('postJson resolves with response with Result ok when content type is "application/json"', async function () {
+    test('postJson resolves with response with Result ok when content type is "application/json"', async () => {
         const kyMock = createKyMock({ contentType: contentTypeFactory.build() });
         const errorReporter = createErrorReporterMock();
         const httpFetcher = createHttpFetcher({ errorReporter, ky: kyMock });
@@ -473,7 +449,7 @@ suite('Http fetcher', function () {
         assert.deepEqual(result, Result.ok(responseJsonFactory.build()));
     });
 
-    test('postJson resolves with response as Result ok with text when content type is unknown', async function () {
+    test('postJson resolves with response as Result ok with text when content type is unknown', async () => {
         const kyMock = createKyMock({ jsonResponse: responseJsonFactory.build() });
         const errorReporter = createErrorReporterMock();
         const httpFetcher = createHttpFetcher({ errorReporter, ky: kyMock });
@@ -486,7 +462,7 @@ suite('Http fetcher', function () {
         assert.deepEqual(result, Result.ok(responseTextFactory.build()));
     });
 
-    test('postJson resolves with response as Result error when internal ky error', async function () {
+    test('postJson resolves with response as Result error when internal ky error', async () => {
         const kyMock = createKyMock({
             contentType: contentTypeFactory.build(),
             error: internalKyHttpErrorFactory.build(),
@@ -507,7 +483,7 @@ suite('Http fetcher', function () {
         ]);
     });
 
-    test('postJson executes with http error handlers when internal ky http error', async function () {
+    test('postJson executes with http error handlers when internal ky http error', async () => {
         const kyMock = createKyMock({
             contentType: contentTypeFactory.build(),
             error: internalKyHttpErrorFactory.build(),
@@ -535,7 +511,7 @@ suite('Http fetcher', function () {
         assert.deepEqual(handler3.lastCall.args, [internalKyHttpErrorFactory.build()]);
     });
 
-    test('patchJson uses the correct parameters', async function () {
+    test('patchJson uses the correct parameters', async () => {
         const kyMock = createKyMock({ jsonResponse: responseJsonFactory.build() });
         const errorReporter = createErrorReporterMock();
         const httpFetcher = createHttpFetcher({ errorReporter, ky: kyMock });
@@ -551,11 +527,11 @@ suite('Http fetcher', function () {
                 headers: {},
                 json: responseJsonFactory.build(),
                 method: 'PATCH',
-            }
+            },
         ]);
     });
 
-    test('patchJson uses the set headers', async function () {
+    test('patchJson uses the set headers', async () => {
         const kyMock = createKyMock({ jsonResponse: responseJsonFactory.build() });
         const errorReporter = createErrorReporterMock();
         const httpFetcher = createHttpFetcher(
@@ -570,7 +546,7 @@ suite('Http fetcher', function () {
             requestOptions: {
                 headers: headerFactory.build({
                     foo: 'bar',
-                })
+                }),
             },
             url: testUrlFactory.build(),
         });
@@ -584,17 +560,14 @@ suite('Http fetcher', function () {
                 }),
                 json: responseJsonFactory.build(),
                 method: 'PATCH',
-            }
+            },
         ]);
     });
 
-    test('patchJson uses the correct parameters when baseUrl is set through options', async function () {
+    test('patchJson uses the correct parameters when baseUrl is set through options', async () => {
         const kyMock = createKyMock();
         const errorReporter = createErrorReporterMock();
-        const httpFetcher = createHttpFetcher(
-            { errorReporter, ky: kyMock },
-            { baseUrl: testUrlFactory.build() }
-        );
+        const httpFetcher = createHttpFetcher({ errorReporter, ky: kyMock }, { baseUrl: testUrlFactory.build() });
 
         await httpFetcher.patchJson({
             pathname: '/somePath',
@@ -607,11 +580,11 @@ suite('Http fetcher', function () {
                 headers: {},
                 json: responseJsonFactory.build(),
                 method: 'PATCH',
-            }
+            },
         ]);
     });
 
-    test('patchJson resolves with response with Result ok when content type is "application/json"', async function () {
+    test('patchJson resolves with response with Result ok when content type is "application/json"', async () => {
         const kyMock = createKyMock({ contentType: contentTypeFactory.build() });
         const errorReporter = createErrorReporterMock();
         const httpFetcher = createHttpFetcher({ errorReporter, ky: kyMock });
@@ -624,7 +597,7 @@ suite('Http fetcher', function () {
         assert.deepEqual(result, Result.ok(responseJsonFactory.build()));
     });
 
-    test('patchJson resolves with response as Result ok with text when content type is unknown', async function () {
+    test('patchJson resolves with response as Result ok with text when content type is unknown', async () => {
         const kyMock = createKyMock({ jsonResponse: responseJsonFactory.build() });
         const errorReporter = createErrorReporterMock();
         const httpFetcher = createHttpFetcher({ errorReporter, ky: kyMock });
@@ -637,7 +610,7 @@ suite('Http fetcher', function () {
         assert.deepEqual(result, Result.ok(responseTextFactory.build()));
     });
 
-    test('patchJson resolves with response as Result error when internal ky error', async function () {
+    test('patchJson resolves with response as Result error when internal ky error', async () => {
         const kyMock = createKyMock({
             contentType: contentTypeFactory.build(),
             error: internalKyHttpErrorFactory.build(),
@@ -658,7 +631,7 @@ suite('Http fetcher', function () {
         ]);
     });
 
-    test('patchJson executes with http error handlers when internal ky http error', async function () {
+    test('patchJson executes with http error handlers when internal ky http error', async () => {
         const kyMock = createKyMock({
             contentType: contentTypeFactory.build(),
             error: internalKyHttpErrorFactory.build(),
@@ -686,7 +659,7 @@ suite('Http fetcher', function () {
         assert.deepEqual(handler3.lastCall.args, [internalKyHttpErrorFactory.build()]);
     });
 
-    test('put uses the correct parameters', async function () {
+    test('put uses the correct parameters', async () => {
         const kyMock = createKyMock({ jsonResponse: responseJsonFactory.build() });
         const errorReporter = createErrorReporterMock();
         const httpFetcher = createHttpFetcher({ errorReporter, ky: kyMock });
@@ -701,11 +674,11 @@ suite('Http fetcher', function () {
                 headers: {},
                 json: undefined,
                 method: 'PUT',
-            }
+            },
         ]);
     });
 
-    test('put uses the set headers', async function () {
+    test('put uses the set headers', async () => {
         const kyMock = createKyMock({ jsonResponse: responseJsonFactory.build() });
         const errorReporter = createErrorReporterMock();
         const httpFetcher = createHttpFetcher(
@@ -719,7 +692,7 @@ suite('Http fetcher', function () {
             requestOptions: {
                 headers: headerFactory.build({
                     foo: 'bar',
-                })
+                }),
             },
             url: testUrlFactory.build(),
         });
@@ -733,17 +706,14 @@ suite('Http fetcher', function () {
                 }),
                 json: undefined,
                 method: 'PUT',
-            }
+            },
         ]);
     });
 
-    test('put uses the correct parameters when baseUrl is set through options', async function () {
+    test('put uses the correct parameters when baseUrl is set through options', async () => {
         const kyMock = createKyMock();
         const errorReporter = createErrorReporterMock();
-        const httpFetcher = createHttpFetcher(
-            { errorReporter, ky: kyMock },
-            { baseUrl: testUrlFactory.build() }
-        );
+        const httpFetcher = createHttpFetcher({ errorReporter, ky: kyMock }, { baseUrl: testUrlFactory.build() });
 
         await httpFetcher.put({
             pathname: '/somePath',
@@ -755,11 +725,11 @@ suite('Http fetcher', function () {
                 headers: {},
                 json: undefined,
                 method: 'PUT',
-            }
+            },
         ]);
     });
 
-    test('put resolves with response with Result ok when content type is "application/json"', async function () {
+    test('put resolves with response with Result ok when content type is "application/json"', async () => {
         const kyMock = createKyMock({ contentType: contentTypeFactory.build() });
         const errorReporter = createErrorReporterMock();
         const httpFetcher = createHttpFetcher({ errorReporter, ky: kyMock });
@@ -771,7 +741,7 @@ suite('Http fetcher', function () {
         assert.deepEqual(result, Result.ok(responseJsonFactory.build()));
     });
 
-    test('put resolves with response as Result ok with text when content type is unknown', async function () {
+    test('put resolves with response as Result ok with text when content type is unknown', async () => {
         const kyMock = createKyMock({ jsonResponse: responseJsonFactory.build() });
         const errorReporter = createErrorReporterMock();
         const httpFetcher = createHttpFetcher({ errorReporter, ky: kyMock });
@@ -783,7 +753,7 @@ suite('Http fetcher', function () {
         assert.deepEqual(result, Result.ok(responseTextFactory.build()));
     });
 
-    test('put resolves with response as Result error when internal ky error', async function () {
+    test('put resolves with response as Result error when internal ky error', async () => {
         const kyMock = createKyMock({
             contentType: contentTypeFactory.build(),
             error: internalKyHttpErrorFactory.build(),
@@ -803,7 +773,7 @@ suite('Http fetcher', function () {
         ]);
     });
 
-    test('put executes with http error handlers when internal ky http error', async function () {
+    test('put executes with http error handlers when internal ky http error', async () => {
         const kyMock = createKyMock({
             contentType: contentTypeFactory.build(),
             error: internalKyHttpErrorFactory.build(),
@@ -830,7 +800,7 @@ suite('Http fetcher', function () {
         assert.deepEqual(handler3.lastCall.args, [internalKyHttpErrorFactory.build()]);
     });
 
-    test('putJson uses the correct parameters', async function () {
+    test('putJson uses the correct parameters', async () => {
         const kyMock = createKyMock({ jsonResponse: responseJsonFactory.build() });
         const errorReporter = createErrorReporterMock();
         const httpFetcher = createHttpFetcher({ errorReporter, ky: kyMock });
@@ -846,11 +816,11 @@ suite('Http fetcher', function () {
                 headers: {},
                 json: responseJsonFactory.build(),
                 method: 'PUT',
-            }
+            },
         ]);
     });
 
-    test('putJson uses the set headers', async function () {
+    test('putJson uses the set headers', async () => {
         const kyMock = createKyMock({ jsonResponse: responseJsonFactory.build() });
         const errorReporter = createErrorReporterMock();
         const httpFetcher = createHttpFetcher(
@@ -865,7 +835,7 @@ suite('Http fetcher', function () {
             requestOptions: {
                 headers: headerFactory.build({
                     foo: 'bar',
-                })
+                }),
             },
             url: testUrlFactory.build(),
         });
@@ -879,17 +849,14 @@ suite('Http fetcher', function () {
                 }),
                 json: responseJsonFactory.build(),
                 method: 'PUT',
-            }
+            },
         ]);
     });
 
-    test('putJson uses the correct parameters when baseUrl is set through options', async function () {
+    test('putJson uses the correct parameters when baseUrl is set through options', async () => {
         const kyMock = createKyMock();
         const errorReporter = createErrorReporterMock();
-        const httpFetcher = createHttpFetcher(
-            { errorReporter, ky: kyMock },
-            { baseUrl: testUrlFactory.build() }
-        );
+        const httpFetcher = createHttpFetcher({ errorReporter, ky: kyMock }, { baseUrl: testUrlFactory.build() });
 
         await httpFetcher.putJson({
             pathname: '/somePath',
@@ -902,11 +869,11 @@ suite('Http fetcher', function () {
                 headers: {},
                 json: responseJsonFactory.build(),
                 method: 'PUT',
-            }
+            },
         ]);
     });
 
-    test('putJson resolves with response with Result ok when content type is "application/json"', async function () {
+    test('putJson resolves with response with Result ok when content type is "application/json"', async () => {
         const kyMock = createKyMock({ contentType: contentTypeFactory.build() });
         const errorReporter = createErrorReporterMock();
         const httpFetcher = createHttpFetcher({ errorReporter, ky: kyMock });
@@ -919,7 +886,7 @@ suite('Http fetcher', function () {
         assert.deepEqual(result, Result.ok(responseJsonFactory.build()));
     });
 
-    test('putJson resolves with response as Result ok with text when content type is unknown', async function () {
+    test('putJson resolves with response as Result ok with text when content type is unknown', async () => {
         const kyMock = createKyMock({ jsonResponse: responseJsonFactory.build() });
         const errorReporter = createErrorReporterMock();
         const httpFetcher = createHttpFetcher({ errorReporter, ky: kyMock });
@@ -932,7 +899,7 @@ suite('Http fetcher', function () {
         assert.deepEqual(result, Result.ok(responseTextFactory.build()));
     });
 
-    test('putJson resolves with response as Result error when internal ky error', async function () {
+    test('putJson resolves with response as Result error when internal ky error', async () => {
         const kyMock = createKyMock({
             contentType: contentTypeFactory.build(),
             error: internalKyHttpErrorFactory.build(),
@@ -953,7 +920,7 @@ suite('Http fetcher', function () {
         ]);
     });
 
-    test('putJson executes with http error handlers when internal ky http error', async function () {
+    test('putJson executes with http error handlers when internal ky http error', async () => {
         const kyMock = createKyMock({
             contentType: contentTypeFactory.build(),
             error: internalKyHttpErrorFactory.build(),
@@ -981,7 +948,7 @@ suite('Http fetcher', function () {
         assert.deepEqual(handler3.lastCall.args, [internalKyHttpErrorFactory.build()]);
     });
 
-    test('deleteJson uses the correct parameters', async function () {
+    test('deleteJson uses the correct parameters', async () => {
         const kyMock = createKyMock({ jsonResponse: responseJsonFactory.build() });
         const errorReporter = createErrorReporterMock();
         const httpFetcher = createHttpFetcher({ errorReporter, ky: kyMock });
@@ -997,11 +964,11 @@ suite('Http fetcher', function () {
                 headers: {},
                 json: responseJsonFactory.build(),
                 method: 'DELETE',
-            }
+            },
         ]);
     });
 
-    test('deleteJson uses the set headers', async function () {
+    test('deleteJson uses the set headers', async () => {
         const kyMock = createKyMock({ jsonResponse: responseJsonFactory.build() });
         const errorReporter = createErrorReporterMock();
         const httpFetcher = createHttpFetcher(
@@ -1016,7 +983,7 @@ suite('Http fetcher', function () {
             requestOptions: {
                 headers: headerFactory.build({
                     foo: 'bar',
-                })
+                }),
             },
             url: testUrlFactory.build(),
         });
@@ -1030,18 +997,15 @@ suite('Http fetcher', function () {
                 }),
                 json: responseJsonFactory.build(),
                 method: 'DELETE',
-            }
+            },
         ]);
     });
 
-    test('deleteJson uses the correct parameters when baseUrl is set through options', async function () {
+    test('deleteJson uses the correct parameters when baseUrl is set through options', async () => {
         const kyMock = createKyMock({ jsonResponse: responseJsonFactory.build() });
         const errorReporter = createErrorReporterMock();
 
-        const httpFetcher = createHttpFetcher(
-            { errorReporter, ky: kyMock },
-            { baseUrl: testUrlFactory.build() }
-        );
+        const httpFetcher = createHttpFetcher({ errorReporter, ky: kyMock }, { baseUrl: testUrlFactory.build() });
 
         await httpFetcher.deleteJson({
             pathname: '/somePath',
@@ -1054,11 +1018,11 @@ suite('Http fetcher', function () {
                 headers: {},
                 json: responseJsonFactory.build(),
                 method: 'DELETE',
-            }
+            },
         ]);
     });
 
-    test('deleteJson resolves with response with Result ok when content type is "application/json"', async function () {
+    test('deleteJson resolves with response with Result ok when content type is "application/json"', async () => {
         const kyMock = createKyMock({ contentType: contentTypeFactory.build() });
         const errorReporter = createErrorReporterMock();
         const httpFetcher = createHttpFetcher({ errorReporter, ky: kyMock });
@@ -1071,7 +1035,7 @@ suite('Http fetcher', function () {
         assert.deepEqual(result, Result.ok(responseJsonFactory.build()));
     });
 
-    test('deleteJson resolves with response as Result ok with text when content type is unknown', async function () {
+    test('deleteJson resolves with response as Result ok with text when content type is unknown', async () => {
         const kyMock = createKyMock({ jsonResponse: responseJsonFactory.build() });
         const errorReporter = createErrorReporterMock();
         const httpFetcher = createHttpFetcher({ errorReporter, ky: kyMock });
@@ -1084,7 +1048,7 @@ suite('Http fetcher', function () {
         assert.deepEqual(result, Result.ok(responseTextFactory.build()));
     });
 
-    test('deleteJson resolves with response as Result error when internal ky error', async function () {
+    test('deleteJson resolves with response as Result error when internal ky error', async () => {
         const kyMock = createKyMock({
             contentType: contentTypeFactory.build(),
             error: internalKyHttpErrorFactory.build(),
@@ -1105,7 +1069,7 @@ suite('Http fetcher', function () {
         ]);
     });
 
-    test('deleteJson executes with http error handlers when internal ky http error', async function () {
+    test('deleteJson executes with http error handlers when internal ky http error', async () => {
         const kyMock = createKyMock({
             contentType: contentTypeFactory.build(),
             error: internalKyHttpErrorFactory.build(),
@@ -1133,7 +1097,7 @@ suite('Http fetcher', function () {
         assert.deepEqual(handler3.lastCall.args, [internalKyHttpErrorFactory.build()]);
     });
 
-    test('delete uses the correct parameters', async function () {
+    test('delete uses the correct parameters', async () => {
         const kyMock = createKyMock();
         const errorReporter = createErrorReporterMock();
         const httpFetcher = createHttpFetcher({ errorReporter, ky: kyMock });
@@ -1148,11 +1112,11 @@ suite('Http fetcher', function () {
                 headers: {},
                 json: undefined,
                 method: 'DELETE',
-            }
+            },
         ]);
     });
 
-    test('delete uses the set headers', async function () {
+    test('delete uses the set headers', async () => {
         const kyMock = createKyMock();
         const errorReporter = createErrorReporterMock();
         const httpFetcher = createHttpFetcher(
@@ -1166,7 +1130,7 @@ suite('Http fetcher', function () {
             requestOptions: {
                 headers: headerFactory.build({
                     foo: 'bar',
-                })
+                }),
             },
             url: testUrlFactory.build(),
         });
@@ -1180,11 +1144,11 @@ suite('Http fetcher', function () {
                 }),
                 json: undefined,
                 method: 'DELETE',
-            }
+            },
         ]);
     });
 
-    test('delete resolves with response with Result ok when content type is "application/json"', async function () {
+    test('delete resolves with response with Result ok when content type is "application/json"', async () => {
         const kyMock = createKyMock({ contentType: contentTypeFactory.build() });
         const errorReporter = createErrorReporterMock();
         const httpFetcher = createHttpFetcher({ errorReporter, ky: kyMock });
@@ -1196,7 +1160,7 @@ suite('Http fetcher', function () {
         assert.deepEqual(result, Result.ok(responseJsonFactory.build()));
     });
 
-    test('delete resolves with response as Result ok with text when content type is unknown', async function () {
+    test('delete resolves with response as Result ok with text when content type is unknown', async () => {
         const kyMock = createKyMock({ jsonResponse: responseJsonFactory.build() });
         const errorReporter = createErrorReporterMock();
         const httpFetcher = createHttpFetcher({ errorReporter, ky: kyMock });
@@ -1208,7 +1172,7 @@ suite('Http fetcher', function () {
         assert.deepEqual(result, Result.ok(responseTextFactory.build()));
     });
 
-    test('delete resolves with error as Result error when internal ky error', async function () {
+    test('delete resolves with error as Result error when internal ky error', async () => {
         const kyMock = createKyMock({
             contentType: contentTypeFactory.build(),
             error: internalKyHttpErrorFactory.build(),
@@ -1228,7 +1192,7 @@ suite('Http fetcher', function () {
         ]);
     });
 
-    test('delete executes with http error handlers when internal ky http error', async function () {
+    test('delete executes with http error handlers when internal ky http error', async () => {
         const kyMock = createKyMock({
             contentType: contentTypeFactory.build(),
             error: internalKyHttpErrorFactory.build(),

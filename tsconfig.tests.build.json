@@ -1,12 +1,8 @@
 {
-  "extends": "./tsconfig.json",
-  "compilerOptions": {
-    "outDir": ".tests",
-    "declaration": false,
-    "declarationMap": false,
-    "sourceMap": false,
-    "incremental": false
-  },
-  "include": ["source/**/*.ts"],
-  "exclude": []
+    "extends": "./tsconfig.json",
+    "compilerOptions": {
+        "outDir": "./target/tests"
+    },
+    "include": ["source/**/*.ts"],
+    "exclude": []
 }

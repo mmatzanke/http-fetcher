@@ -142,13 +142,16 @@ export default [
                 },
             ],
             'sonarjs/cognitive-complexity': ['warn', 15],
+            'prefer-arrow/prefer-arrow-functions': 'off',
             'sort-keys-custom-order/object-keys': [
                 'error',
                 {
                     orderedKeys: ['id'],
                 },
             ],
+            'functional/prefer-immutable-types': 'off',
             'typescript-enum/no-enum': 'warn',
+            'functional/immutable-data': 'off',
             'unicorn/no-abusive-eslint-disable': 'error',
             'unicorn/no-array-for-each': 'warn',
             'unicorn/no-null': 'off',

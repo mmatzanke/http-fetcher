@@ -1,7 +1,7 @@
 import ky from 'ky';
 
-import { createHttpFetcher as _createHttpFetcher } from './http-fetcher';
-import type { HttpFetcher, HttpFetcherOptions } from './http-fetcher';
+import { createHttpFetcher as _createHttpFetcher } from './http-fetcher.js';
+import type { HttpFetcher, HttpFetcherOptions } from './http-fetcher.js';
 
 export type HttpFetcherWithBaseUrl = Readonly<HttpFetcher<{ readonly baseUrl: URL }>>;
 export type ErrorReporter = {

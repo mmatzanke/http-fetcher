@@ -1,16 +1,14 @@
 import { HTTPError } from 'ky';
-import { Maybe as MaybeModule, Result } from 'true-myth';
-import { z } from 'zod';
-
-import type { Maybe as MaybeType } from 'true-myth';
 import type { Options } from 'ky';
 import type _ky from 'ky';
-import type { HTTPMethod } from './http-method.js';
-import { HTTPErrorWithResponseBody } from './http-error-with-response-body';
+import Maybe from 'true-myth/maybe';
+import Result from 'true-myth/result';
+import { z } from 'zod';
 
-export type RequestOptions = Readonly<
-    Pick<Options, 'body' | 'credentials' | 'headers' | 'searchParams' | 'signal' | 'timeout'>
->;
+import { HTTPErrorWithResponseBody } from './http-error-with-response-body.js';
+import type { HTTPMethod } from './http-method.js';
+
+export type RequestOptions = Pick<Options, 'body' | 'credentials' | 'headers' | 'searchParams' | 'signal' | 'timeout'>;
 
 export type Pathname = `/${string}`;
 
@@ -27,7 +25,7 @@ export type HttpFetcherOptions = {
 };
 
 export type ErrorReporter = {
-    readonly reportError: (message: string, error: Readonly<Error>) => void;
+    readonly reportError: (message: string, error: Error) => void;
 };
 
 type HttpFetcherDependencies = {
@@ -58,32 +56,26 @@ type ParametersWithJsonPayload<T extends HttpFetcherOptions> = ParametersWithout
 export type RequestHeaders = Record<string, string>;
 
 export const isParametersWithUrl = (
-    parameters: ParametersWithPathname | ParametersWithUrl
+    parameters: ParametersWithPathname | ParametersWithUrl,
 ): parameters is ParametersWithUrl => {
     return 'url' in parameters && parameters.url instanceof URL;
 };
 
-type ErrorHandler = (error: Readonly<HTTPError>) => void;
+type ErrorHandler = (error: HTTPError) => void;
 
-export type HttpFetcherError = Readonly<Error & {
-  readonly errorCode?: string;
-  readonly message?: string;
-}>;
+export type HttpFetcherError = Error & { readonly errorCode?: string; readonly message?: string };
 
 const backendErrorsSchema = z.object({
     errors: z
         .object({
             errorCode: z.string(),
-            message: z.string()
+            message: z.string(),
         })
         .array()
-        .min(1)
+        .min(1),
 });
 
-const mapErrorToHttpFetcherError = (
-    value: unknown,
-    error: Readonly<Error>,
-): Readonly<HttpFetcherError> => {
+const mapErrorToHttpFetcherError = (value: unknown, error: Error): HttpFetcherError => {
     const backendErrors = backendErrorsSchema.safeParse(value);
 
     if (backendErrors.success) {
@@ -105,44 +97,26 @@ const mapErrorToHttpFetcherError = (
 // eslint-disable-next-line @typescript-eslint/consistent-type-definitions
 export interface HttpFetcher<T extends HttpFetcherOptions = HttpFetcherOptions> {
     readonly addHttpErrorHandler: (errorHandler: ErrorHandler) => void;
-    readonly delete: (
-        options: ParametersWithoutPayload<T>,
-    ) => Promise<Result<unknown, HttpFetcherError>>;
-    readonly deleteJson: (
-        options: ParametersWithJsonPayload<T>,
-    ) => Promise<Result<unknown, HttpFetcherError>>;
-    readonly get: (
-        options: ParametersWithoutPayload<T>,
-    ) => Promise<Result<unknown, HttpFetcherError>>;
-    readonly patchJson: (
-        options: ParametersWithJsonPayload<T>,
-    ) => Promise<Result<unknown, HttpFetcherError>>;
-    readonly post: (
-        options: ParametersWithoutPayload<T>,
-    ) => Promise<Result<unknown, HttpFetcherError>>;
-    readonly postJson: (
-        options: ParametersWithJsonPayload<T>,
-    ) => Promise<Result<unknown, HttpFetcherError>>;
-    readonly put: (
-        options: ParametersWithoutPayload<T>,
-    ) => Promise<Result<unknown, HttpFetcherError>>;
-    readonly putJson: (
-        options: ParametersWithJsonPayload<T>,
-    ) => Promise<Result<unknown, HttpFetcherError>>;
+    readonly delete: (options: ParametersWithoutPayload<T>) => Promise<Result<unknown, HttpFetcherError>>;
+    readonly deleteJson: (options: ParametersWithJsonPayload<T>) => Promise<Result<unknown, HttpFetcherError>>;
+    readonly get: (options: ParametersWithoutPayload<T>) => Promise<Result<unknown, HttpFetcherError>>;
+    readonly patchJson: (options: ParametersWithJsonPayload<T>) => Promise<Result<unknown, HttpFetcherError>>;
+    readonly post: (options: ParametersWithoutPayload<T>) => Promise<Result<unknown, HttpFetcherError>>;
+    readonly postJson: (options: ParametersWithJsonPayload<T>) => Promise<Result<unknown, HttpFetcherError>>;
+    readonly put: (options: ParametersWithoutPayload<T>) => Promise<Result<unknown, HttpFetcherError>>;
+    readonly putJson: (options: ParametersWithJsonPayload<T>) => Promise<Result<unknown, HttpFetcherError>>;
     set requestHeaders(headers: RequestHeaders);
 }
 
 export const createHttpFetcher = <T extends HttpFetcherOptions>(
     { errorReporter, ky }: HttpFetcherDependencies,
-    options?: T
-): Readonly<HttpFetcher<T>> => {
+    options?: T,
+): HttpFetcher<T> => {
     const { baseUrl, requestHeaders: initialRequestHeaders } = options ?? {};
-    let requestHeaders: MaybeType<RequestHeaders> = MaybeModule.nothing();
+    let requestHeaders: Maybe<RequestHeaders> = Maybe.nothing();
     const httpErrorHandlers: ErrorHandler[] = [];
 
-    const determineUrlToFetch = (
-        urlParameters: ParametersWithPathname | ParametersWithUrl
-    ): Readonly<URL> => {
+    const determineUrlToFetch = (urlParameters: ParametersWithPathname | ParametersWithUrl): URL => {
         if (isParametersWithUrl(urlParameters)) {
             return urlParameters.url;
         }
@@ -153,23 +127,13 @@ export const createHttpFetcher = <T extends HttpFetcherOptions>(
         return new URL(`${basePath}/${extendedPath}`, baseUrl);
     };
 
-    const fetch = async (
-        options: InternalFetchOptions
-    ): Promise<Result<unknown, HttpFetcherError>> => {
+    const fetch = async (options: InternalFetchOptions): Promise<Result<unknown, HttpFetcherError>> => {
         const { method, payload, requestOptions, url } = options;
         const kyOptions: Options = {
             ...requestOptions,
-            headers: requestHeaders.mapOrElse<RequestHeaders>(
-                () => {
-                    return { ...initialRequestHeaders, ...requestOptions.headers };
-                },
-                (defaultHeaders: RequestHeaders) => {
-                    return {
-                        ...initialRequestHeaders,
-                        ...defaultHeaders,
-                        ...requestOptions.headers,
-                    }
-}
+            headers: requestHeaders.mapOrElse(
+                () => ({ ...initialRequestHeaders, ...requestOptions.headers }),
+                (defaultHeaders) => ({ ...initialRequestHeaders, ...defaultHeaders, ...requestOptions.headers }),
             ),
             json: payload,
             method,
@@ -196,12 +160,9 @@ export const createHttpFetcher = <T extends HttpFetcherOptions>(
                     const responseJson = await error.response.json();
 
                     return Result.err(
-                        mapErrorToHttpFetcherError(
-                            responseJson,
-                            new HTTPErrorWithResponseBody(error, responseJson)
-                        ),
+                        mapErrorToHttpFetcherError(responseJson, new HTTPErrorWithResponseBody(error, responseJson)),
                     );
-                } catch {
+                } catch (_: unknown) {
                     return Result.err(error);
                 }
             }
@@ -227,91 +188,51 @@ export const createHttpFetcher = <T extends HttpFetcherOptions>(
         async delete(parameters) {
             const { requestOptions = {} } = parameters;
 
-            return fetch({
-                method: 'DELETE',
-                requestOptions,
-                url: determineUrlToFetch(parameters)
-            });
+            return fetch({ method: 'DELETE', requestOptions, url: determineUrlToFetch(parameters) });
         },
         async deleteJson(parameters) {
             const { payload, requestOptions = {} } = parameters;
 
-            return fetch({
-                method: 'DELETE',
-                payload,
-                requestOptions,
-                url: determineUrlToFetch(parameters)
-            });
+            return fetch({ method: 'DELETE', payload, requestOptions, url: determineUrlToFetch(parameters) });
         },
         async get(parameters) {
             const { requestOptions = {} } = parameters;
 
-            return fetch({
-                method: 'GET',
-                requestOptions,
-                url: determineUrlToFetch(parameters)
-            });
+            return fetch({ method: 'GET', requestOptions, url: determineUrlToFetch(parameters) });
         },
         async patchJson(parameters) {
             const { payload, requestOptions = {} } = parameters;
 
-            return fetch({
-                method: 'PATCH',
-                payload,
-                requestOptions,
-                url: determineUrlToFetch(parameters)
-            });
+            return fetch({ method: 'PATCH', payload, requestOptions, url: determineUrlToFetch(parameters) });
         },
         async post(parameters) {
             const { requestOptions = {} } = parameters;
 
-            return fetch({
-                method: 'POST',
-                requestOptions,
-                url: determineUrlToFetch(parameters)
-            });
+            return fetch({ method: 'POST', requestOptions, url: determineUrlToFetch(parameters) });
         },
         async postJson(parameters) {
             const { payload, requestOptions = {} } = parameters;
 
-            return fetch({
-                method: 'POST',
-                payload,
-                requestOptions,
-                url: determineUrlToFetch(parameters)
-            });
+            return fetch({ method: 'POST', payload, requestOptions, url: determineUrlToFetch(parameters) });
         },
         async put(parameters) {
             const { requestOptions = {} } = parameters;
 
-            return fetch({
-                method: 'PUT',
-                requestOptions,
-                url: determineUrlToFetch(parameters)
-            });
+            return fetch({ method: 'PUT', requestOptions, url: determineUrlToFetch(parameters) });
         },
         async putJson(parameters) {
             const { payload, requestOptions = {} } = parameters;
 
-            return fetch({
-                method: 'PUT',
-                payload,
-                requestOptions,
-                url: determineUrlToFetch(parameters)
-            });
+            return fetch({ method: 'PUT', payload, requestOptions, url: determineUrlToFetch(parameters) });
         },
         set requestHeaders(_requestHeaders: RequestHeaders) {
-            requestHeaders = requestHeaders.mapOrElse<MaybeType<RequestHeaders>>(
-                () => {
-                    return MaybeModule.of(_requestHeaders);
-                },
-                (headers: RequestHeaders) => {
-                {
-return MaybeModule.of<RequestHeaders>({
-                    ...headers,
-                    ..._requestHeaders,
-                })
-}
+            requestHeaders = requestHeaders.mapOrElse(
+                () => Maybe.of(_requestHeaders),
+                (headers) =>
+                    Maybe.of<RequestHeaders>({
+                        ...headers,
+                        ..._requestHeaders,
+                    }),
             );
         },
     };
